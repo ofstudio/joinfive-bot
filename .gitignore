@@ -1,0 +1,5 @@
+.idea
+.env*
+
+_data
+_playground

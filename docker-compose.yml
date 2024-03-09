@@ -1,0 +1,31 @@
+# Docker Compose example file with Traefik v2 and Let's Encrypt
+version: "3"
+services:
+
+  app:
+    build: .
+    restart: always
+    logging:
+      options:
+        max-size: 10m
+    networks:
+      - web
+    volumes:
+      - /path/to/joinfive-bot:/data
+    environment:
+      DB_FILEPATH: ${DB_FILEPATH}
+      BOT_TOKEN: ${BOT_TOKEN}
+      REPORT_TO: ${REPORT_TO}
+      BOT_USE_WEBHOOK: true
+      BOT_WEBHOOK_PUBLIC_URL: https://YOUR_DOMAIN.COM/bot/
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.joinfive-bot.rule=Host(`YOUR_DOMAIN.COM`)
+      - traefik.http.routers.joinfive-bot.entrypoints=websecure
+      - traefik.http.routers.joinfive-bot.tls.options=default
+      - traefik.http.routers.joinfive-bot.tls.certresolver=le
+      - traefik.http.routers.joinfive-bot.middlewares=securityHeaders@file
+
+networks:
+  web:
+    external: true

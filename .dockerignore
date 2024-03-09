@@ -1,0 +1,11 @@
+_data
+_playground
+
+.dockerignore
+.gitignore
+.env*
+
+*.md
+LICENSE
+Dockerfile
+docker-compose.yml
