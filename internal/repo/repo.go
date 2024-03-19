@@ -1,14 +1,10 @@
 package repo
 
 import (
-	"embed"
-	"errors"
 	"fmt"
 	"log/slog"
 
-	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/sqlite"
-	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/jmoiron/sqlx"
 
 	"joinfive-bot/internal/config"
@@ -16,9 +12,7 @@ import (
 
 // SQLiteRepo is a repository implementation for SQLite database
 type SQLiteRepo struct {
-	db         *sqlx.DB
-	stmts      map[stmtId]*sqlx.Stmt
-	namedStmts map[namedStmtId]*sqlx.NamedStmt
+	db *sqlx.DB
 }
 
 // NewSQLiteRepo - SQLiteRepo constructor
@@ -36,19 +30,18 @@ func NewSQLiteRepo(c config.DB) (*SQLiteRepo, error) {
 
 	// check db version
 	if version != c.RequiredVersion {
-		return nil, fmt.Errorf("%w: got '%d', want '%d'", ErrDBVersion, version, c.RequiredVersion)
+		return nil, fmt.Errorf(
+			"%w: got '%d', want '%d'",
+			ErrDBVersion,
+			version,
+			c.RequiredVersion,
+		)
 	}
 
 	// connect to db
 	db, err := sqlx.Open("sqlite", c.Filepath)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrDBOpen, err)
-	}
-
-	// prepare statements
-	stmts, namedStmts, err := prepareStatements(db)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrStmtPrepare, err)
 	}
 
 	slog.Info("repo: created",
@@ -58,9 +51,7 @@ func NewSQLiteRepo(c config.DB) (*SQLiteRepo, error) {
 	)
 
 	return &SQLiteRepo{
-		db:         db,
-		stmts:      stmts,
-		namedStmts: namedStmts,
+		db: db,
 	}, nil
 }
 
@@ -71,77 +62,4 @@ func (r *SQLiteRepo) Close() {
 	} else {
 		slog.Info("repo: closed")
 	}
-}
-
-//go:embed migrations/*.sql
-var fs embed.FS
-
-// migrateDB migrates the database
-func migrateDB(filepath string) (uint, error) {
-	data, err := iofs.New(fs, "migrations")
-	if err != nil {
-		return 0, err
-	}
-
-	m, err := migrate.NewWithSourceInstance("iofs", data, "sqlite://"+filepath)
-	if err != nil {
-		return 0, err
-	}
-
-	if err = m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		return 0, err
-	}
-
-	version, isDirty, err := m.Version()
-	if err != nil {
-		return 0, err
-	}
-
-	if isDirty {
-		return 0, ErrDBDirty
-	}
-
-	return version, nil
-}
-
-type (
-	stmtId      int
-	namedStmtId int
-)
-
-var (
-	queries      []string
-	namedQueries []string
-)
-
-func addStmt(query string) stmtId {
-	queries = append(queries, query)
-	return stmtId(len(queries) - 1)
-}
-
-func addNamedStmt(query string) namedStmtId {
-	namedQueries = append(namedQueries, query)
-	return namedStmtId(len(namedQueries) - 1)
-}
-
-func prepareStatements(db *sqlx.DB) (map[stmtId]*sqlx.Stmt, map[namedStmtId]*sqlx.NamedStmt, error) {
-	statements := make(map[stmtId]*sqlx.Stmt, len(queries))
-	for id, query := range queries {
-		s, err := db.Preparex(query)
-		if err != nil {
-			return nil, nil, fmt.Errorf("%w: `%s`", err, query)
-		}
-		statements[stmtId(id)] = s
-	}
-
-	namedStatements := make(map[namedStmtId]*sqlx.NamedStmt, len(namedQueries))
-	for id, query := range namedQueries {
-		s, err := db.PrepareNamed(query)
-		if err != nil {
-			return nil, nil, fmt.Errorf("%w: `%s`", err, query)
-		}
-		namedStatements[namedStmtId(id)] = s
-	}
-
-	return statements, namedStatements, nil
 }

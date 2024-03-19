@@ -10,7 +10,9 @@ import (
 	"joinfive-bot/internal/models"
 )
 
-var updateCreate = addNamedStmt(`
+// UpdateCreate creates a new update record.
+func (r *SQLiteRepo) UpdateCreate(ctx context.Context, update *models.Update) error {
+	const query = `
 INSERT INTO updates (chat_id,
                      chat_type,
                      chat_title,
@@ -34,12 +36,15 @@ VALUES (:chat_id,
 RETURNING 
 	id, 
 	created_at
-`)
+`
+	stmt, err := r.db.PrepareNamedContext(ctx, query)
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrUpdateCreate, err)
+	}
+	//goland:noinspection ALL
+	defer stmt.Close()
 
-// UpdateCreate creates a new update record.
-func (r *SQLiteRepo) UpdateCreate(ctx context.Context, update *models.Update) error {
-	if err := r.namedStmts[updateCreate].
-		QueryRowxContext(ctx, update).
+	if err = stmt.QueryRowxContext(ctx, update).
 		Scan(
 			&update.Id,
 			&update.CreatedAt,
@@ -53,16 +58,11 @@ func (r *SQLiteRepo) UpdateCreate(ctx context.Context, update *models.Update) er
 	return nil
 }
 
-var updateGetById = addStmt(`
-SELECT * FROM updates
-WHERE id = ?1
-`)
-
 // UpdateGetById retrieves an update by id.
 func (r *SQLiteRepo) UpdateGetById(ctx context.Context, id int64) (*models.Update, error) {
+	const query = `SELECT * FROM updates WHERE id = ?1`
 	var update models.Update
-	if err := r.stmts[updateGetById].
-		QueryRowxContext(ctx, id).
+	if err := r.db.QueryRowxContext(ctx, query, id).
 		StructScan(&update); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNotFound
