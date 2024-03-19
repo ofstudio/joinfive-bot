@@ -54,7 +54,7 @@ func (suite *TestSQLiteRepoSuite) TestMigrateDB() {
 	suite.Equal(uint(1), ver)
 
 	// check tables created
-	db, err := sqlx.Open("sqlite3", fp)
+	db, err := sqlx.Open("sqlite", fp)
 	suite.NoError(err)
 	//goland:noinspection ALL
 	defer db.Close()

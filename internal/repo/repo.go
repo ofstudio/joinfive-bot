@@ -7,7 +7,7 @@ import (
 	"log/slog"
 
 	"github.com/golang-migrate/migrate/v4"
-	_ "github.com/golang-migrate/migrate/v4/database/sqlite3"
+	_ "github.com/golang-migrate/migrate/v4/database/sqlite"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/jmoiron/sqlx"
 
@@ -40,7 +40,7 @@ func NewSQLiteRepo(c config.DB) (*SQLiteRepo, error) {
 	}
 
 	// connect to db
-	db, err := sqlx.Open("sqlite3", c.Filepath)
+	db, err := sqlx.Open("sqlite", c.Filepath)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrDBOpen, err)
 	}
@@ -52,7 +52,7 @@ func NewSQLiteRepo(c config.DB) (*SQLiteRepo, error) {
 	}
 
 	slog.Info("repo: created",
-		slog.String("driver", "sqlite3"),
+		slog.String("driver", "sqlite"),
 		slog.String("path", c.Filepath),
 		slog.Int("version", int(version)),
 	)
@@ -83,7 +83,7 @@ func migrateDB(filepath string) (uint, error) {
 		return 0, err
 	}
 
-	m, err := migrate.NewWithSourceInstance("iofs", data, "sqlite3://"+filepath)
+	m, err := migrate.NewWithSourceInstance("iofs", data, "sqlite://"+filepath)
 	if err != nil {
 		return 0, err
 	}
