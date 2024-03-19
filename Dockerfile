@@ -5,6 +5,7 @@ RUN go mod download
 COPY . .
 RUN go build \
     -ldflags "-s -w" \
+    -trimpath \
     -o /build/joinfive-bot \
     ./cmd/joinfive-bot/main.go
 
